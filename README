@@ -1,0 +1,42 @@
+ReportGenerator.py
+
+Author:      Ben Schwabe
+Last Edited: 2015.10.27
+Last program Edit: 2015.10.27
+
+Description:
+    A script designed to traverse through a file system and pick out matching IP addresses from a formatted list of IP connections.
+    A few assumptions about the files being traversed are made (for an example see the included "conn.log" file):
+        1) The files to search must be named "conn.log"
+        2) The files must be in a specific format:
+            -One connection entry per line, with the last character in each line being a '\n' newline character
+            -Each entry must have 24 columns of information, separated by a single '\t' tab character
+            -IPs are located in the 3rd and 5th column, and the connection state must be located in column 11 (with 'SF' meaning the connection was successful)
+            -comments are allowed on their own separate lines by including the character '#' to the beginning of the line
+            -do not include empty whitespace in the file
+            -The default columns assume that the user wants the destination ip (3rd column), destination ip (5th column), the destination ip (6th column), and the connection protocol (7th column)
+        3) The files to search will be in a subdirectory of the path defined in the `rootDirectory` variable the user will have to change before use (located on line 15 of ReportGenerator.py).
+    The output of the program is in comma separated .csv files, one for each IP in the given query. The name of each file is x.x.x.x.csv, where x.x.x.x is an ip in the query defined by the user.
+    The list of queries found will always be in the following format:
+        a list of ips that match the search in the source column, sorted by the destination ip column, followed immediately by
+        a list of ips that match the search in the destination column, sorted by the source ip column
+
+Available Commands:
+
+-c <list of relevant columns (and "default") OR "all">
+    A list of the columns to save for each matching result (ranging from 0 to 23) separated by spaces.
+    Using the command "all" automatically sets the program to save all of the data
+    Using the command "default" automatically sets the columns 2,4,5, and 6 to save, and can be used along with other columns as well
+    For example, the command `-c default 20` would write columns 2,4,5,6, and 20 to the report file.
+    
+-h
+    Displays the help function in the console.
+
+-i <list of input files>
+    A list of input files separated by spaces. These files must contain IPs to search for, one per line. The last line of each file MUST be an empty line.
+    Specific paths to files originate in the same directory as the script.
+    For example, If one were to open a file called "search.txt" located in the parent directory of the script, one would use the command `-i ../search.txt`
+    
+-l <list of ips>
+    A list of IPs to search for, separated by spaces.
+    For example, the command `-l 8.8.8.8 192.168.0.0` would search for the IPs "8.8.8.8" and "192.168.0.0"

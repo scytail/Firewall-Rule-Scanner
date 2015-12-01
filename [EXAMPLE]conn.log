@@ -1,0 +1,11 @@
+#separator \x09
+#set_separator  ,
+#empty_field    (empty)
+#unset_field    -
+#path   conn
+#open
+#fields ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       proto   service duration        orig_bytes      resp_bytes      conn_state      local_orig      local_resp      missed_bytes    history orig_pkts       orig_ip_bytes   resp_pkts       resp_ip_bytes   tunnel_parents  orig_cc resp_cc sensorname
+#types  time    string  addr    port    addr    port    enum    string  interval        count   count   string  bool    bool    count   string  count   count   count   count   set[string]     string  string  string
+0123456789.123456	AbcDefgHIjklMN012	1.0.0.1	99999	192.168.999.123	9119	tcp	-	0.000001	0	0	REJ	F	F	0	Srr	1	96	2	80	(empty)	US	US	SENSOR_NAME
+9876543012.445442	AAA111BBB222CCC333	8.8.8.8	12345	800.800.800.800	2221	udp	dns	0.010000	42	50	SF	F	F	0	Dd	1	70	1	86	(empty)	US	US	SENSOR_NAME
+#close	
