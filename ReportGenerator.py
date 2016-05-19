@@ -15,8 +15,7 @@ import gzip
 
 #Change to what directory you want the system to start looking for conn.log
 #it is recommended that you narrow down the path as small as possible, since the code has to scan every file in every subdirectory in the root directory
-rootDirectory = "C:/Users/bspym/Dropbox/ITS/FirewallRuleScanner/Firewall-Rule-Scanner"
-#/full/path/to/folder/containing/folders/with/dated/logs
+rootDirectory = "/full/path/to/folder/containing/folders/with/dated/logs"
 
 #important columns (starting at 0)
 source_ip = 2
