@@ -1,3 +1,5 @@
+#!/bin/env python2.7
+#
 # ReportGenerator.py
 # 
 # A script written to traverse a file system and pull relevant data about IPs and data connections for users
@@ -9,10 +11,12 @@
 import os
 import sys
 import datetime
+import gzip
 
 #Change to what directory you want the system to start looking for conn.log
 #it is recommended that you narrow down the path as small as possible, since the code has to scan every file in every subdirectory in the root directory
-rootDirectory = "/full/path/to/folder/containing/folders/with/dated/logs"
+rootDirectory = "C:/Users/bspym/Dropbox/ITS/FirewallRuleScanner/Firewall-Rule-Scanner"
+#/full/path/to/folder/containing/folders/with/dated/logs
 
 #important columns (starting at 0)
 source_ip = 2
@@ -128,11 +132,12 @@ print "Currently traversing the file system for your query. This may take a whil
 #traverse the file system to find the matching lines
 for subdir, dirs, files in os.walk(rootDirectory):
     for currentFile in files:
-        if currentFile == "conn.log": #open from files called "conn.log"
-            logFile=open(subdir+ "/" + currentFile,"r")
+        if currentFile[0:5] == "conn." and currentFile[len(currentFile)-7:] == ".log.gz": #open from zipped files called "conn.*.log.gz" where * is any combination of characters.
+            logFile=gzip.open(subdir+ "/" + currentFile)
             filesRead+=1
             
-            for line in logFile: #processes each line in the conn.log
+            for lineBytes in logFile: #processes each line in the conn.log
+                line = lineBytes.decode("utf-8") #decode the line into a string
                 if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
                     
                     lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line

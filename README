@@ -1,13 +1,13 @@
 ReportGenerator.py
 
 Author:      Ben Schwabe
-Last Edited: 2015.10.27
-Last program Edit: 2015.10.27
+Last Readme Edit: 2016.05.19
+Last program Edit: 2016.05.19
 
 Description:
-    A script designed to traverse through a file system and pick out matching IP addresses from a formatted list of IP connections.
+    A script designed to traverse through a file system and pick out matching IP addresses from a formatted list of IP connections, using python 2.7
     A few assumptions about the files being traversed are made (for an example see the included "conn.log" file):
-        1) The files to search must be named "conn.log"
+        1) The files to search must be named "conn.*.log.gz", where "*" is any combination of characters allowed in a file name. Additionaly, the file must be a standard compressed *.gz file.
         2) The files must be in a specific format:
             -One connection entry per line, with the last character in each line being a '\n' newline character
             -Each entry must have 24 columns of information, separated by a single '\t' tab character
