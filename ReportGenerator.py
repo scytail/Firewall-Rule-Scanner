@@ -126,7 +126,7 @@ for ip in ipSearchList:
     #built so that for each element in resultList (i.e. for each IP being searched), there is a dictionary of lists, each list containing the line data where that specific ip was found
     resultList.append({"source":[],"destination":[]})
 filesRead = 0
-print "Currently traversing the file system for your query. This may take a while..."
+print "Currently traversing the file system for your query. This may take a while...\n"
 
 #traverse the file system to find the matching lines
 for subdir, dirs, files in os.walk(rootDirectory):
@@ -135,7 +135,11 @@ for subdir, dirs, files in os.walk(rootDirectory):
             logFile=gzip.open(subdir+ "/" + currentFile)
             filesRead+=1
             
+            #status update for the user
+            print "opened file {0} for reading...".format(currentFile),
+            numLines = 0
             for lineBytes in logFile: #processes each line in the conn.log
+                numLines+=1 #count the number of lines in the file
                 line = lineBytes.decode("utf-8") #decode the line into a string
                 if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
                     
@@ -155,6 +159,7 @@ for subdir, dirs, files in os.walk(rootDirectory):
                                 resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
                                 
             logFile.close()
+            print "\nRead {0} lines.".format(numLines)
 
 print "File scan has been completed. Writing results to files."
 
