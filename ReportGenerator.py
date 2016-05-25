@@ -6,7 +6,6 @@
 # 
 # Author:   Ben Schwabe
 # Created:  2015.09.09
-# Modified: 2015.11.10
 
 import os
 import sys
@@ -31,6 +30,7 @@ success_data = "SF"
 #command data defaults
 importantCols = [0,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] #used for recording columns
 ipSearchList = []
+lastDateToSearch = "-1" #optional variable to confine the search to after a current day, in the format yyyymmdd
 
 #A class to store individual lines of data in memory for later use (to free up the CPU for processing other lines)
 class DataContainer:
@@ -107,6 +107,11 @@ while i < len(sys.argv):
                 i += 1
             else:
                 break
+    
+    elif sys.argv[i] == "-d":
+        i+=1
+        lastDateToSearch = sys.argv[i]
+        i+=1
                 
     elif sys.argv[i] == "-h" or sys.argv[i] == "-?" or sys.argv[i] == "-help":
         print "PythonGenerator.py\n"
@@ -114,6 +119,7 @@ while i < len(sys.argv):
         print "-i <list of input files>     A list of files that contain IPs to search for"
         print "-l <IP list>                 A command line list of IPs to search for"
         print "-c <numeric list of columns> A numeric list of columns from the files to log. Use 'default' to save the default columns and 'all' to save all the columns"
+        print "-d <date in format yyyymmdd> A valid date in the format yyyymmdd, where the date is the oldest date to search for (inclusively). If this is not included, it will scan all dates."
         print "-h                           displays this dialog"
         print "\n Please see the included 'README' file for more detailed information."
         i+=1
@@ -131,37 +137,36 @@ print "Currently traversing the file system for your query. This may take a whil
 #traverse the file system to find the matching lines
 for subdir, dirs, files in os.walk(rootDirectory):
     for currentFile in files:
-        if currentFile[0:5] == "conn." and currentFile[len(currentFile)-7:] == ".log.gz": #open from zipped files called "conn.*.log.gz" where * is any combination of characters.
-            logFile=gzip.open(subdir+ "/" + currentFile)
-            filesRead+=1
-            
-            #status update for the user
-            print "opened file {0} for reading...".format(currentFile),
-            numLines = 0
-            for lineBytes in logFile: #processes each line in the conn.log
-                numLines+=1 #count the number of lines in the file
-                line = lineBytes.decode("utf-8") #decode the line into a string
-                if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
+        if currentFile[0:5] == "conn." and currentFile[len(currentFile)-7:] == ".log.gz": #found a zipped file called "conn.*.log.gz" where * is any combination of characters.
+            dateDirectoryList = subdir.replace("\\","/").split("/") #divide the subdirectory into an ordered list of the directories the file is located in
+            dateDirectory = dateDirectoryList[len(dateDirectoryList)-1] #get the closest directory (assumes that the filesystem will have deepest subdirectory be the date of the file)
+            if dateDirectory >= lastDateToSearch: #the file we found is equal to or after the oldest date to scan
+                with gzip.open(subdir+ "/" + currentFile) as logFile:
+                    filesRead+=1
                     
-                    lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
-                    
-                    if lineArray[success] == success_data: #only want connections that succeeded in connecting
-                        
-                        for ipIndex in range(0,len(ipSearchList)):
-                            ip = ipSearchList[ipIndex]
+                    #status update for the user
+                    print "Opened file {0} for reading...".format(currentFile),
+                    numLines = 0
+                    for lineBytes in logFile: #processes each line in the conn.log
+                        numLines+=1 #count the number of lines in the file
+                        line = lineBytes.decode("utf-8") #decode the line into a string
+                        if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
                             
-                            if ip == lineArray[source_ip]: #match found
+                            lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
+                            
+                            if lineArray[success] == success_data: #only want connections that succeeded in connecting
                                 
-                                resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
-                                
-                            elif ip == lineArray[destination_ip]:
-                                
-                                resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
-                                
-            logFile.close()
-            print "\nRead {0} lines.".format(numLines)
+                                for ipIndex in range(0,len(ipSearchList)):
+                                    ip = ipSearchList[ipIndex]
+                                    
+                                    if ip == lineArray[source_ip]: #match found in the source IP
+                                        resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
+                                        
+                                    elif ip == lineArray[destination_ip]: #match found in the destination IP
+                                        resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
+                print "\nRead {0} lines.".format(numLines)
 
-print "File scan has been completed. Writing results to files."
+print "\nFile scan has been completed. Writing results to files."
 
 filesCreated = 0
 

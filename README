@@ -1,8 +1,6 @@
 ReportGenerator.py
 
 Author:      Ben Schwabe
-Last Readme Edit: 2016.05.19
-Last program Edit: 2016.05.19
 
 Description:
     A script designed to traverse through a file system and pick out matching IP addresses from a formatted list of IP connections, using python 2.7
@@ -16,7 +14,8 @@ Description:
             -do not include empty whitespace in the file
             -The default columns assume that the user wants the destination ip (3rd column), destination ip (5th column), the destination ip (6th column), and the connection protocol (7th column)
         3) The files to search will be in a subdirectory of the path defined in the `rootDirectory` variable the user will have to change before use (located on line 15 of ReportGenerator.py).
-    The output of the program is in comma separated .csv files, one for each IP in the given query. The name of each file is x.x.x.x.csv, where x.x.x.x is an ip in the query defined by the user.
+            -Additionally, the deepest subdirectory of the file must be the date that the file was created, in the format yyyymmdd. The program will still work properly if this is not followed, but -d functionality may not work as intended.
+    The output of the program is in comma separated .csv files, one for each IP in the given query. The name of each file is x.x.x.x.csv, where x.x.x.x is an ip in the query defined by the user. If there is no file for a query IP, then no results were found in the search.
     The list of queries found will always be in the following format:
         a list of ips that match the search in the source column, sorted by the destination ip column, followed immediately by
         a list of ips that match the search in the destination column, sorted by the source ip column
@@ -28,7 +27,11 @@ Available Commands:
     Using the command "all" automatically sets the program to save all of the data
     Using the command "default" automatically sets the columns 2,4,5, and 6 to save, and can be used along with other columns as well
     For example, the command `-c default 20` would write columns 2,4,5,6, and 20 to the report file.
-    
+
+-d <yyyymmdd>
+    A date in the format yyyymmdd. This date represents the oldest date to search back for in the file system, inclusively (for example, if the date 20150101 is put in, the program will scan only files start on January 1, 2015 and after.)
+    If -d is not included, the program will assume that all dates should be searched, and will scan all the files found without restriction. This functionality can also be achieved explicitly by supplying an arbitrarily old date, as well.
+
 -h
     Displays the help function in the console.
 
