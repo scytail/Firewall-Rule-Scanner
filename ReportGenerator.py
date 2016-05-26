@@ -11,6 +11,8 @@ import os
 import sys
 import datetime
 import gzip
+import subprocess
+import platform
 
 #Change to what directory you want the system to start looking for conn.log
 #it is recommended that you narrow down the path as small as possible, since the code has to scan every file in every subdirectory in the root directory
@@ -131,40 +133,50 @@ resultList = []
 for ip in ipSearchList:
     #built so that for each element in resultList (i.e. for each IP being searched), there is a dictionary of lists, each list containing the line data where that specific ip was found
     resultList.append({"source":[],"destination":[]})
+
 filesRead = 0
+
 print "Currently traversing the file system for your query. This may take a while...\n"
 
-#traverse the file system to find the matching lines
-for subdir, dirs, files in os.walk(rootDirectory):
-    for currentFile in files:
-        if currentFile[0:5] == "conn." and currentFile[len(currentFile)-7:] == ".log.gz": #found a zipped file called "conn.*.log.gz" where * is any combination of characters.
-            dateDirectoryList = subdir.replace("\\","/").split("/") #divide the subdirectory into an ordered list of the directories the file is located in
-            dateDirectory = dateDirectoryList[len(dateDirectoryList)-1] #get the closest directory (assumes that the filesystem will have deepest subdirectory be the date of the file)
-            if dateDirectory >= lastDateToSearch: #the file we found is equal to or after the oldest date to scan
-                with gzip.open(subdir+ "/" + currentFile) as logFile:
-                    filesRead+=1
+if platform.system() == "Windows":
+    #findCmdOutputString = subprocess.Popen(['dir','/s','/b',"{0}".format(''.join([rootDirectory,'/*/conn.*.log.gz']))],stdout=subprocess.PIPE).stdout.read()
+    print "THIS PROGRAM DOES NOT CURRENTLY WORK ON WINDOWS."
+    findCmdOutputString = ""
+else:
+    findCmdOutputString = subprocess.Popen(['find',rootDirectory,'-name','conn.*.log.gz'],stdout=subprocess.PIPE).stdout.read()
+
+files = findCmdOutputString.split("\n")#make a list of the results
+files = files[:len(files)-1]#shave off the empty final argument
+
+#traverse the file system to read the matching files
+for currentFile in files:
+    dateDirectoryList = currentFile.replace("\\","/").split("/") #divide the subdirectory into an ordered list of the directories the file is located in
+    dateDirectory = dateDirectoryList[len(dateDirectoryList)-2] #get the closest directory (assumes that the filesystem will have deepest subdirectory be the date of the file)
+    if dateDirectory >= lastDateToSearch: #the file we found is equal to or after the oldest date to scan
+        with gzip.open(currentFile) as logFile:
+            filesRead+=1
+            
+            #status update for the user
+            print "Opened file {0} for reading...".format(currentFile),
+            numLines = 0
+            for lineBytes in logFile: #processes each line in the conn.log
+                numLines+=1 #count the number of lines in the file
+                line = lineBytes.decode("utf-8") #decode the line into a string
+                if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
                     
-                    #status update for the user
-                    print "Opened file {0} for reading...".format(currentFile),
-                    numLines = 0
-                    for lineBytes in logFile: #processes each line in the conn.log
-                        numLines+=1 #count the number of lines in the file
-                        line = lineBytes.decode("utf-8") #decode the line into a string
-                        if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
+                    lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
+                    
+                    if lineArray[success] == success_data: #only want connections that succeeded in connecting
+                        
+                        for ipIndex in range(0,len(ipSearchList)):
+                            ip = ipSearchList[ipIndex]
                             
-                            lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
-                            
-                            if lineArray[success] == success_data: #only want connections that succeeded in connecting
+                            if ip == lineArray[source_ip]: #match found in the source IP
+                                resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
                                 
-                                for ipIndex in range(0,len(ipSearchList)):
-                                    ip = ipSearchList[ipIndex]
-                                    
-                                    if ip == lineArray[source_ip]: #match found in the source IP
-                                        resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
-                                        
-                                    elif ip == lineArray[destination_ip]: #match found in the destination IP
-                                        resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
-                print "\nRead {0} lines.".format(numLines)
+                            elif ip == lineArray[destination_ip]: #match found in the destination IP
+                                resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
+        print "\nRead {0} lines.".format(numLines)
 
 print "\nFile scan has been completed. Writing results to files."
 
