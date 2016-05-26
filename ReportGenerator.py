@@ -138,6 +138,7 @@ filesRead = 0
 
 print "Currently traversing the file system for your query. This may take a while...\n"
 
+#run the unix 'find' command, or windows alternative (since it is faster than natively executing python's 'os.walk()' method), and output the result to a variable as a string
 if platform.system() == "Windows":
     #findCmdOutputString = subprocess.Popen(['dir','/s','/b',"{0}".format(''.join([rootDirectory,'/*/conn.*.log.gz']))],stdout=subprocess.PIPE).stdout.read()
     print "THIS PROGRAM DOES NOT CURRENTLY WORK ON WINDOWS."
