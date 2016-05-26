@@ -32,7 +32,7 @@ success_data = "SF"
 #command data defaults
 importantCols = [0,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] #used for recording columns
 ipSearchList = []
-lastDateToSearch = "-1" #optional variable to confine the search to after a current day, in the format yyyymmdd
+lastDateToSearch = "-1" #variable to confine the search to after a current day, in the format yyyymmdd
 
 #A class to store individual lines of data in memory for later use (to free up the CPU for processing other lines)
 class DataContainer:
@@ -72,6 +72,8 @@ def binaryInsert(targetList,targetColumn,item):
 
 #Runs through the list of command line arguments
 i=1
+dateFound = False #must have a start date
+queryFound = False #must have a query
 while i < len(sys.argv):
     if sys.argv[i] == "-i":
         i += 1
@@ -83,6 +85,7 @@ while i < len(sys.argv):
                 i += 1
             else:
                 break
+        queryFound = True
                 
     elif sys.argv[i] == "-l":
         i += 1
@@ -92,6 +95,7 @@ while i < len(sys.argv):
                 i += 1
             else:
                 break
+        queryFound = True
                 
     elif sys.argv[i] == "-c":
         i+=1
@@ -114,6 +118,7 @@ while i < len(sys.argv):
         i+=1
         lastDateToSearch = sys.argv[i]
         i+=1
+        dateFound=True
                 
     elif sys.argv[i] == "-h" or sys.argv[i] == "-?" or sys.argv[i] == "-help":
         print "PythonGenerator.py\n"
@@ -128,6 +133,10 @@ while i < len(sys.argv):
     else:
         raise KeyError("'" + sys.argv[i] + "' is not a valid argument. Use -h for a list of commands.")
 
+#needs a query and a start date
+if not (dateFound and queryFound):
+    raise KeyError("This program requires a valid date and ip query to continue execution.")
+
 #build the data structure that will hold the IPs to output to a file
 resultList = []
 for ip in ipSearchList:
@@ -136,48 +145,47 @@ for ip in ipSearchList:
 
 filesRead = 0
 
+#construct the current date in the proper format
+todayDate = datetime.date.today()
+year = str(todayDate.year).zfill(4)
+month = str(todayDate.month).zfill(2)
+day = str(todayDate.day).zfill(2)
+todayFolderName = "{0}{1}{2}".format(year,month,day)
+
 print "Currently traversing the file system for your query. This may take a while...\n"
 
-#run the unix 'find' command, or windows alternative (since it is faster than natively executing python's 'os.walk()' method), and output the result to a variable as a string
-if platform.system() == "Windows":
-    #findCmdOutputString = subprocess.Popen(['dir','/s','/b',"{0}".format(''.join([rootDirectory,'/*/conn.*.log.gz']))],stdout=subprocess.PIPE).stdout.read()
-    print "THIS PROGRAM DOES NOT CURRENTLY WORK ON WINDOWS."
-    findCmdOutputString = ""
-else:
-    findCmdOutputString = subprocess.Popen(['find',rootDirectory,'-name','conn.*.log.gz'],stdout=subprocess.PIPE).stdout.read()
-
-files = findCmdOutputString.split("\n")#make a list of the results
-files = files[:len(files)-1]#shave off the empty final argument
-
 #traverse the file system to read the matching files
-for currentFile in files:
-    dateDirectoryList = currentFile.replace("\\","/").split("/") #divide the subdirectory into an ordered list of the directories the file is located in
-    dateDirectory = dateDirectoryList[len(dateDirectoryList)-2] #get the closest directory (assumes that the filesystem will have deepest subdirectory be the date of the file)
-    if dateDirectory >= lastDateToSearch: #the file we found is equal to or after the oldest date to scan
-        with gzip.open(currentFile) as logFile:
-            filesRead+=1
-            
-            #status update for the user
-            print "Opened file {0} for reading...".format(currentFile),
-            numLines = 0
-            for lineBytes in logFile: #processes each line in the conn.log
-                numLines+=1 #count the number of lines in the file
-                line = lineBytes.decode("utf-8") #decode the line into a string
-                if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
-                    
-                    lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
-                    
-                    if lineArray[success] == success_data: #only want connections that succeeded in connecting
+for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop through each folder
+    for fileCounter in range(0,23):
+        currentFile = "conn.{0}:00:00-{1}:00:00.log.gz".format(str(fileCounter).zfill(2),str(fileCounter+1).zfill(2))
+        pathToFile = "{0}/{1}/{2}".format(rootDirectory,folderCounter,currentFile)
+        try:
+            with gzip.open(pathToFile) as logFile:
+                filesRead+=1
+                
+                #status update for the user
+                print "Opened file {0} for reading...".format(currentFile),
+                numLines = 0
+                for lineBytes in logFile: #processes each line in the conn.log
+                    numLines+=1 #count the number of lines in the file
+                    line = lineBytes.decode("utf-8") #decode the line into a string
+                    if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
                         
-                        for ipIndex in range(0,len(ipSearchList)):
-                            ip = ipSearchList[ipIndex]
+                        lineArray = line.split("\t") #split the line into an array based on separation by single tabs between pieces of data and then picks out only the relevant data from each line
+                        
+                        if lineArray[success] == success_data: #only want connections that succeeded in connecting
                             
-                            if ip == lineArray[source_ip]: #match found in the source IP
-                                resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
+                            for ipIndex in range(0,len(ipSearchList)):
+                                ip = ipSearchList[ipIndex]
                                 
-                            elif ip == lineArray[destination_ip]: #match found in the destination IP
-                                resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
-        print "\nRead {0} lines.".format(numLines)
+                                if ip == lineArray[source_ip]: #match found in the source IP
+                                    resultList[ipIndex]["source"] = binaryInsert(resultList[ipIndex]["source"],destination_ip,lineArray)
+                                    
+                                elif ip == lineArray[destination_ip]: #match found in the destination IP
+                                    resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
+                print "Read {0} lines.".format(numLines)
+        except IOError:
+            print "ERROR: '{0}' was unable to be opened.".format(pathToFile)
 
 print "\nFile scan has been completed. Writing results to files."
 
