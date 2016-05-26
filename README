@@ -20,6 +20,7 @@ Description:
     The list of queries found will always be in the following format:
         a list of ips that match the search in the source column, sorted by the destination ip column, followed immediately by
         a list of ips that match the search in the destination column, sorted by the source ip column
+    zcat MUST be installed on the user's OS for this program to work as intended.
 
 Available Commands:
 

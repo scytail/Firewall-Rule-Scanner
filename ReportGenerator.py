@@ -12,11 +12,11 @@ import sys
 import datetime
 import gzip
 import subprocess
-import platform
 
 #Change to what directory you want the system to start looking for conn.log
 #it is recommended that you narrow down the path as small as possible, since the code has to scan every file in every subdirectory in the root directory
-rootDirectory = "/full/path/to/folder/containing/folders/with/dated/logs"
+rootDirectory = "/home/administrator/Documents"
+"/full/path/to/folder/containing/folders/with/dated/logs"
 
 #important columns (starting at 0)
 source_ip = 2
@@ -159,14 +159,22 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
     for fileCounter in range(0,23):
         currentFile = "conn.{0}:00:00-{1}:00:00.log.gz".format(str(fileCounter).zfill(2),str(fileCounter+1).zfill(2))
         pathToFile = "{0}/{1}/{2}".format(rootDirectory,folderCounter,currentFile)
+        fileContentsError = ""
         try:
-            with gzip.open(pathToFile) as logFile:
+            subprocessExecution = subprocess.Popen(['zcat',pathToFile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)#unzip and read
+            fileContentsString = subprocessExecution.stdout.read()#output
+            fileContentsError = subprocessExecution.stderr.read()#error
+            fileContentsList = fileContentsString.split("\n")#split the string into a list
+            fileContentsList = fileContentsList[:len(fileContentsList)-1]#remove empty trailing line
+            
+            if fileContentsError == "":#no error in cat
                 filesRead+=1
                 
                 #status update for the user
                 print "Opened file {0} for reading...".format(currentFile),
+                
                 numLines = 0
-                for lineBytes in logFile: #processes each line in the conn.log
+                for lineBytes in fileContentsList: #processes each line in the conn.log
                     numLines+=1 #count the number of lines in the file
                     line = lineBytes.decode("utf-8") #decode the line into a string
                     if not (line[0] == "#"): #eliminates the commented out lines (since these aren't necessarily in standard format and aren't important)
@@ -184,6 +192,9 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
                                 elif ip == lineArray[destination_ip]: #match found in the destination IP
                                     resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
                 print "Read {0} lines.".format(numLines)
+            else:#error in zcat
+                print fileContentsError
+            
         except IOError:
             print "ERROR: '{0}' was unable to be opened.".format(pathToFile)
 
