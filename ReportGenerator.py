@@ -156,6 +156,15 @@ print "Currently traversing the file system for your query. This may take a whil
 
 #traverse the file system to read the matching files
 for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop through each folder
+    
+    #check to make sure there is still a valid date available, and roll over if we got to the end of a possible month/year
+    if (folderCounter % 100) > 31:#last possible day in a month
+        folderCounter += 100 #increment "months" place
+        folderCounter -= ((folderCounter % 100)+1) #reset last two digits
+    if (folderCounter % 10000) > 1231:#last possible day and month in a year
+        folderCounter += 10000 #increment "years" place
+        folderCounter -= ((folderCounter % 10000)+1)#reset last four digits
+    
     for fileCounter in range(0,23):
         currentFile = "conn.{0}:00:00-{1}:00:00.log.gz".format(str(fileCounter).zfill(2),str(fileCounter+1).zfill(2))
         pathToFile = "{0}/{1}/{2}".format(rootDirectory,folderCounter,currentFile)
