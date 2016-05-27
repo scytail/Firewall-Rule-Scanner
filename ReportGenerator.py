@@ -160,10 +160,12 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
     #check to make sure there is still a valid date available, and roll over if we got to the end of a possible month/year
     if (folderCounter % 100) > 31:#last possible day in a month
         folderCounter += 100 #increment "months" place
-        folderCounter -= ((folderCounter % 100)+1) #reset last two digits
+        folderCounter -= (folderCounter % 100) #reset last two digits
+        folderCounter += 1
     if (folderCounter % 10000) > 1231:#last possible day and month in a year
         folderCounter += 10000 #increment "years" place
-        folderCounter -= ((folderCounter % 10000)+1)#reset last four digits
+        folderCounter -= (folderCounter % 10000)#reset last four digits
+        folderCounter += 1
     
     for fileCounter in range(0,23):
         currentFile = "conn.{0}:00:00-{1}:00:00.log.gz".format(str(fileCounter).zfill(2),str(fileCounter+1).zfill(2))
