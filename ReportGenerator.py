@@ -15,8 +15,7 @@ import subprocess
 
 #Change to what directory you want the system to start looking for conn.log
 #it is recommended that you narrow down the path as small as possible, since the code has to scan every file in every subdirectory in the root directory
-rootDirectory = "/home/administrator/Documents"
-"/full/path/to/folder/containing/folders/with/dated/logs"
+rootDirectory = "/full/path/to/folder/containing/folders/with/dated/logs"
 
 #important columns (starting at 0)
 source_ip = 2
@@ -33,6 +32,9 @@ success_data = "SF"
 importantCols = [0,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] #used for recording columns
 ipSearchList = []
 lastDateToSearch = "-1" #variable to confine the search to after a current day, in the format yyyymmdd
+
+#log file name (for diagnostics)
+logFileName = "ReportGenerator.log"
 
 #A class to store individual lines of data in memory for later use (to free up the CPU for processing other lines)
 class DataContainer:
@@ -70,10 +72,14 @@ def binaryInsert(targetList,targetColumn,item):
         targetList.append(DataContainer(item))
     return targetList
 
+logFile = open(logFileName,"w")#open logFile for writing
+logFile.write("[{0}] log file opened for writing\n".format(datetime.datetime.today()))
+
 #Runs through the list of command line arguments
 i=1
 dateFound = False #must have a start date
 queryFound = False #must have a query
+logFile.write("[{0}] reading command line arguments\n".format(datetime.datetime.today()))
 while i < len(sys.argv):
     if sys.argv[i] == "-i":
         i += 1
@@ -135,16 +141,23 @@ while i < len(sys.argv):
 
 #needs a query and a start date
 if not (dateFound and queryFound):
+    if not dateFound:
+        logFile.write("[{0}] no starting date given\n".format(datetime.datetime.today()))
+    if not queryFound:
+        logFile.write("[{0}] no query given\n".format(datetime.datetime.today()))
+    logFile.write("[{0}] script must terminate due to missing information\n".format(datetime.datetime.today()))
     raise KeyError("This program requires a valid date and ip query to continue execution.")
 
+logFile.write("[{0}] Executing script with query {1} and start date {2}\n".format(datetime.datetime.today(),ipSearchList,lastDateToSearch))
+
 #build the data structure that will hold the IPs to output to a file
+logFile.write("[{0}] building result data structure\n".format(datetime.datetime.today()))
 resultList = []
 for ip in ipSearchList:
     #built so that for each element in resultList (i.e. for each IP being searched), there is a dictionary of lists, each list containing the line data where that specific ip was found
     resultList.append({"source":[],"destination":[]})
-
 filesRead = 0
-
+logFile.write("[{0}] data structure built\n".format(datetime.datetime.today()))
 #construct the current date in the proper format
 todayDate = datetime.date.today()
 year = str(todayDate.year).zfill(4)
@@ -152,6 +165,7 @@ month = str(todayDate.month).zfill(2)
 day = str(todayDate.day).zfill(2)
 todayFolderName = "{0}{1}{2}".format(year,month,day)
 
+logFile.write("[{0}] BEGINNING TRAVERSAL OF FILE SYSTEM FOR QUERY\n".format(datetime.datetime.today()))
 print "Currently traversing the file system for your query. This may take a while...\n"
 
 #traverse the file system to read the matching files
@@ -172,7 +186,9 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
         pathToFile = "{0}/{1}/{2}".format(rootDirectory,folderCounter,currentFile)
         fileContentsError = ""
         try:
+            logFile.write("\n[{0}] unzipping {1}\n".format(datetime.datetime.today(),pathToFile))
             subprocessExecution = subprocess.Popen(['zcat',pathToFile],stdout=subprocess.PIPE,stderr=subprocess.PIPE)#unzip and read
+            logFile.write("[{0}] reading {1}\n".format(datetime.datetime.today(),currentFile))
             fileContentsString = subprocessExecution.stdout.read()#output
             fileContentsError = subprocessExecution.stderr.read()#error
             fileContentsList = fileContentsString.split("\n")#split the string into a list
@@ -181,6 +197,7 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
             if fileContentsError == "":#no error in cat
                 filesRead+=1
                 
+                logFile.write("[{0}] processing {1}\n".format(datetime.datetime.today(),currentFile))
                 #status update for the user
                 print "Opened file {0} for reading...".format(currentFile),
                 
@@ -202,21 +219,29 @@ for folderCounter in range(int(lastDateToSearch),int(todayFolderName)): #loop th
                                     
                                 elif ip == lineArray[destination_ip]: #match found in the destination IP
                                     resultList[ipIndex]["destination"] = binaryInsert(resultList[ipIndex]["destination"],source_ip,lineArray)
+                
+                logFile.write("[{0}] read {1} lines\n".format(datetime.datetime.today(),numLines))
                 print "Read {0} lines.".format(numLines)
             else:#error in zcat
+                logFile.write("[{0}] zcat generated the following error: {1}".format(datetime.datetime.today(),fileContentsError))
                 print fileContentsError
             
         except IOError:
+            logFile.write("[{0}] {1} WAS UNABLE TO BE OPENED\n".format(datetime.datetime.today(),pathToFile))
             print "ERROR: '{0}' was unable to be opened.".format(pathToFile)
 
+logFile.write("[{0}] FILE TRAVERSAL HAS BEEN COMPLETED. {1} files read\n".format(datetime.datetime.today(),filesRead))
 print "\nFile scan has been completed. Writing results to files."
 
+logFile.write("[{0}] beginning writing data structure to files\n".format(datetime.datetime.today()))
 filesCreated = 0
 
 #create the report
 for ipIndex in range(0,len(ipSearchList)):
+    logFile.write("[{0}] checking results for ip {1}\n".format(datetime.datetime.today(),ipSearchList[ipIndex]))
     #only create a report file if there are things to log
     if resultList[ipIndex]["source"] != [] or resultList[ipIndex]["destination"] != []:
+        logFile.write("[{0}] generating report for ip {1}\n".format(datetime.datetime.today(),ipSearchList[ipIndex]))
         report = open(str(ipSearchList[ipIndex]) + ".csv","w")
         filesCreated+=1
     
@@ -247,5 +272,11 @@ for ipIndex in range(0,len(ipSearchList)):
                     report.write("\n") #writes a newline to the file in case the last piece of data in a line from the logfile isn't printed (this piece of data contains '\n' at the end of it)
         
         report.close()
-    
+    else:
+        logFile.write("[{0}] no results found in data structure for ip {1}\n".format(datetime.datetime.today(),ipSearchList[ipIndex]))
+
+logFile.write("[{0}] data structure was compiled successfully into {1} files\n".format(datetime.datetime.today(),filesCreated))
 print "Read {0} files for your query. Data has been compiled into {1} files.".format(filesRead,filesCreated)
+
+logFile.write("[{0}] closing log file\n".format(datetime.datetime.today()))
+logFile.close()
